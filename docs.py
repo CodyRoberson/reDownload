@@ -2,7 +2,7 @@ import json
 import requests
 
 import logging
-logging.basicConfig( level=logging.INFO)
+logging.basicConfig( level=logging.DEBUG)
 log = logging.getLogger("docs_py")
 log.addHandler(logging.FileHandler("getdocs.log", 'w'))
 
@@ -29,8 +29,9 @@ def parse_filetree(lst: list, path:str):
         
         if dtype == "CollectionType":
             log.debug(f"{name} was a folder!")
-            path = path + "/"+ name
-            parse_filetree(grab(id+"/"), path)
+            newpath = path + "/"+ name
+            log.debug(f"parse_filetree({id + '/' + name}, {newpath})")
+            parse_filetree(grab(id+"/"), newpath)
         else:
             log.debug(f"{name} was a document!")
             docs.append((name, id, path+'/'+name))
@@ -51,5 +52,14 @@ def get_docs():
     # Get webinterface-Home
     parse_filetree(grab(""), "")
     
+    log.info(f"Results are as follows.")
+    for doc in docs:
+        log.info(f"{doc}")
+
     for x in docs:
-        download(x)
+        # download(x)
+        pass
+
+if __name__ == "__main__":
+    get_docs()
+
