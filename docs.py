@@ -1,8 +1,8 @@
-import json
 import requests
+import os
 
 import logging
-logging.basicConfig( level=logging.DEBUG)
+logging.basicConfig( level=logging.INFO)
 log = logging.getLogger("docs_py")
 log.addHandler(logging.FileHandler("getdocs.log", 'w'))
 
@@ -23,7 +23,7 @@ def parse_filetree(lst: list, path:str):
         obj = lst[i]
         id = obj['ID']
         name = obj['VissibleName']
-        # parent = obj['Parent']
+        parent = obj['Parent']
         dtype = obj['Type']
 
         
@@ -34,31 +34,48 @@ def parse_filetree(lst: list, path:str):
             parse_filetree(grab(id+"/"), newpath)
         else:
             log.debug(f"{name} was a document!")
-            docs.append((name, id, path+'/'+name))
+            docs.append((name, id, path+'/',parent))
 
 def download(thruple: tuple):
-    name, id, path = thruple
+    name, id, _, _ = thruple
     log.info(name)
     
+    os.makedirs("./downloads", exist_ok=True)
+    headers = {
+        'Accept': "*/*",
+        'Accept-Encoding': "gzip,deflate",
+        'Accept-Language': "en-US,en;q=0.9"
+    }
     url = f"http://10.11.99.1/download/{id}/rmdoc"
-    req = requests.get(url)
+    req = requests.get(url, headers=headers)
     if req.status_code == 200:
-        with open(f"{name}.zip", "wb") as file:
+        with open(f"./downloads/{name}.rmdoc", "wb") as file:
             for chunk in req.iter_content(chunk_size=8192):
                 file.write(chunk)
-
 
 def get_docs():
     # Get webinterface-Home
     parse_filetree(grab(""), "")
     
-    log.info(f"Results are as follows.")
+    log.info(f"\nFound the following files:\n")
     for doc in docs:
         log.info(f"{doc}")
 
+    log.info(f"Downloading...\n")
     for x in docs:
-        # download(x)
+        download(x)
         pass
+
+    log.info("\nWriting metadata")
+    with open("./downloads/metainf.txt", 'w') as fh:
+        fh.write("name,uuid,folder,parent\n")
+        for obj in docs:
+            name, id, path, parent = obj
+            fh.write(f"{name},{id},{path},{parent}\n")
+
+
+    log.info("Operation Complete")
+
 
 if __name__ == "__main__":
     get_docs()
